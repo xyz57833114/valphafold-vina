@@ -12,17 +12,15 @@ import docker
 from docker import types
 
 
+
 def pdb_to_pdbqt(receptor, out_dir):
     """
-
+    将pdb文件(f'{out_dir}/{receptor}.pdb')转化为pdbqt格式并保存为f'{out_dir}/{receptor}.pdbqt'
     :param receptor: 输入的是蛋白序列文件的名称，无后缀名
     :param out_dir:输出的路径
     :return:
     """
-    file_name = os.path.join(out_dir, receptor, 'ranked_0.pdb')  # f'/tmp/alphafold/{receptor}/ranked_0.pdb'
-    while not os.path.exists(file_name):  # 判断文件是否存在
-        time.sleep(0.5)
-    print('alphaflod finish!')
+    file_name = os.path.join(out_dir, receptor)  # f'/tmp/alphafold/{receptor}/ranked_0.pdb'
     f = open(file_name, 'r')
     #读取每一行数据
     lines = f.readlines()
@@ -33,12 +31,20 @@ def pdb_to_pdbqt(receptor, out_dir):
     f.close()
     f_w.close()
 
+def openbabel(ligand_file, format, out_file):
+    """
+    :ligand_file:为输入化合物文件名，无后缀名
+    :format：为输入化合物文件格式
+    """
+    #past_file =
+    cmd = f'obabel -i {format} {ligand_file}.{format} -opdbqt -O {out_file}'
+    return os.popen(cmd, 'r')
 
 def autodock_vina_run(receptor_file, ligand_file, out_file, log_file):
     """
-
+    用于给蛋白质pdbqt格式和化合物pdbqt格式做分子对接 autodock vina
     :param receptor_file:输入的是蛋白序列文件的名称，有后缀名, 绝对路径
-    :param ligand_file:输入的是化合物文件的名称，有后缀名, 绝对路径
+    :param ligand_file:输入的是化合物文件的名称，又后缀名, 绝对路径
     :param out_file:输出的对接结果文件，为pdbqt格式
     :param log_file：输出的对接结果打分值，为txt文件
     :return:
@@ -53,21 +59,38 @@ def autodock_vina_run(receptor_file, ligand_file, out_file, log_file):
     # print(cmd)
     return os.popen(cmd, 'r')
 
-def pdb_to_pdbqt_autodock_vina_run(receptor_pdb, ligand_file, out_file, log_file):
 
-    pdb_to_pdbqt(receptor_pdb, receptor_pdbqt)
-    autodock_vina_run(receptor_pdbqt, ligand_file, out_file, log_file)
-    return
+def openbabel_vina(receptor, ligand_file, format, out_dir):
+    """
+    用于给不同格式的化合物进行格式转换
+    :param receptor: 输入的是蛋白序列文件的名称，无后缀名
+    :param ligand_file: 输入的是化合物文件的名称，无后缀名
+    :param format：为输入化合物文件格式
+    :param out_dir:输出的路径
+    """
+    if not os.path.exists(out_dir):
+        os.mkdir(out_dir)
+    _, ligand_name = os.path.split(ligand_file)
+    _, receptor_name = os.path.split(receptor)
+    openbabel(f'{ligand_file}',
+              f'{format}',
+              os.path.join(out_dir, f'{ligand_name}.pdbqt'))
+    pdb_to_pdbqt(receptor, out_dir)
+    # receptor_name = receptor_name.replace('.pdbqt', '')
+    # ligand_name = ligand_name.replace('.pdbqt', '')
+    autodock_vina_run(f'{receptor}.pdbqt',
+                      f'{ligand_file}.pdbqt',
+                      os.path.join(out_dir, f'{receptor_name}_{ligand_name}.pdbqt'),
+                      os.path.join(out_dir, f'{receptor_name}_{ligand_name}.txt'))
+
 
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument('receptor_file', type=str, help='the receptor file, absolute path without file extension, e.g. /tmp/autodock_vina/000001.pdbqt')
-    parser.add_argument('ligand_file', type=str, help='the ligand file, absolute path without file extension, e.g. /tmp/autodock_vina/1.pdbqt')
-    parser.add_argument('out_file', type=str, help='the format of out file, e.g. /tmp/autodock_vina/out.pdbqt')
-    parser.add_argument('log_file', type=str, help='the dictionary of log file, e.g. /tmp/autodock_vina/log.txt')
+    parser.add_argument('receptor', type=str, help='the receptor file, absolute path without file extension, e.g. /tmp/alphafold/Y265H')
+    parser.add_argument('ligand', type=str, help='the ligand file, absolute path without file extension, e.g. /tmp/alphafold/1')
+    parser.add_argument('formate', type=str, help='the format of ligand file, e.g. mol2')
+    parser.add_argument('outdir', type=str, help='the dictionary of output files, e.g. /tmp/alphafold/Y265H_1')
     args = parser.parse_args()
-    autodock_vina_run(args.receptor_file, args.ligand_file, args.out_file, args.log_file)
+    openbabel_vina(args.receptor, args.ligand, args.formate, args.outdir)
 
-    
-    
