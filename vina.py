@@ -60,7 +60,7 @@ def autodock_vina_run(receptor_file, ligand_file, out_file, log_file):
     return os.popen(cmd, 'r')
 
 
-def openbabel_vina(receptor, ligand_file, format, out_dir):
+def openbabel_vina(receptor, ligand_file, format, out_dir, job_id=0):
     """
     用于给不同格式的化合物进行格式转换
     :param receptor: 输入的是蛋白序列文件的名称，无后缀名
@@ -82,6 +82,66 @@ def openbabel_vina(receptor, ligand_file, format, out_dir):
                       f'{ligand_file}.pdbqt',
                       os.path.join(out_dir, f'{receptor_name}_{ligand_name}.pdbqt'),
                       os.path.join(out_dir, f'{receptor_name}_{ligand_name}.txt'))
+    file_name = os.path.join(out_dir, f'{receptor_name}_{ligand_name}.txt')
+    while not os.path.exists(file_name):  # 判断文件是否存在
+        time.sleep(0.5)
+    print('vina finish!')
+
+    generate_html(outdir=out_dir,
+                  html_name=f'{receptor_name}_{ligand_name}.html',
+                  job_id=job_id,
+                  protein_tertiary_structure_PDBQT_format_file=f'{receptor_name}.pdbqt',
+                  compound_PDBQT_format_file=f'{ligand_name}.pdbqt',
+                  autodock_vina_molecular_docking_result=f'{receptor_name}_{ligand_name}.pdbqt',
+                  autodock_vina_molecular_docking_scoring_value=f'{receptor_name}_{ligand_name}.txt'
+                  )
+
+
+def generate_html(outdir,
+                  html_name,
+                  job_id=0,
+                  protein_tertiary_structure_PDBQT_format_file='Y265H/ranked_0.pdb',
+                  compound_PDBQT_format_file='1.pdbqt',
+                  autodock_vina_molecular_docking_result='Y265H_1.pdbqt',
+                  autodock_vina_molecular_docking_scoring_value='Y265H_1.txt'
+                  ):
+    html_name = os.path.join(outdir, html_name)
+    f = open(html_name, 'w')
+
+    message = """
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <title>REPORT</title>
+        </head>
+        <body>
+            <h2 align="left">JOB id: %d</h2>
+            <h2></h2>
+            <h2 align="left">Input file</h2>
+            <p align="left">You can find your input fasta file here.</p>
+            <h3></h3>
+            <h2 align="left">Result files</h2>
+
+            <h3 align="left">Protein tertiary structure PDBQT format file</h3>
+            <p align="left">Click <a href="%s">here</a> to download the Protein tertiary structure PDBQT format file.</p>
+            <h3 align="left">Compound PDBQT format file</h3>
+            <p align="left">Click <a href="%s">here</a> to download the PPDBQT format file.</p>
+            <h3 align="left">Autodock vina molecular docking result</h3>
+            <p align="left">Click <a href="%s">here</a> to download the Autodock vina molecular docking result file.</p>
+            <h3 align="left">Autodock Vina molecular docking scoring value</h3>
+            <p align="left">Click <a href="%s">here</a> to download the Autodock Vina molecular docking scoring value file.</p>
+
+        </body>
+        </html>
+        """ % (job_id,
+               protein_tertiary_structure_PDBQT_format_file,
+               compound_PDBQT_format_file,
+               autodock_vina_molecular_docking_result,
+               autodock_vina_molecular_docking_scoring_value)
+
+    f.write(message)
+    f.close()
 
 
 if __name__ == '__main__':
