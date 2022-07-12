@@ -198,9 +198,6 @@ def pdb_to_pdbqt(receptor, out_dir):
     :return:
     """
     file_name = os.path.join(out_dir, receptor, 'ranked_0.pdb')  # f'/tmp/alphafold/{receptor}/ranked_0.pdb'
-    while not os.path.exists(file_name):  # 判断文件是否存在
-        time.sleep(0.5)
-    print('alphaflod finish!')
     f = open(file_name, 'r')
     #读取每一行数据
     lines = f.readlines()
@@ -240,12 +237,13 @@ def autodock_vina_run(receptor_file, ligand_file, out_file, log_file):
     return os.popen(cmd, 'r')
 
 
-def alphafold_openbabel_vina(receptor, ligand_file, format, out_dir):
+def alphafold_openbabel_vina(receptor, ligand_file, format, out_dir, job_id=0):
     """
     :param receptor: 输入的是蛋白序列文件的名称，无后缀名
     :param ligand_file: 输入的是化合物文件的名称，无后缀名
     :param format：为输入化合物文件格式
     :param out_dir:输出的路径
+    :param job_id:
     """
     if not os.path.exists(out_dir):
         os.mkdir(out_dir)
@@ -255,6 +253,11 @@ def alphafold_openbabel_vina(receptor, ligand_file, format, out_dir):
               f'{format}',
               os.path.join(out_dir, f'{ligand_name}.pdbqt'))
     docker_service([f'{receptor}.fasta'], output_dir=out_dir)
+    file_name = os.path.join(out_dir, receptor, 'ranked_0.pdb')  # f'/tmp/alphafold/{receptor}/ranked_0.pdb'
+    while not os.path.exists(file_name):  # 判断文件是否存在
+        time.sleep(0.5)
+    print('alphaflod finish!')
+
     pdb_to_pdbqt(receptor, out_dir)
     # receptor_name = receptor_name.replace('.pdbqt', '')
     # ligand_name = ligand_name.replace('.pdbqt', '')
@@ -262,6 +265,71 @@ def alphafold_openbabel_vina(receptor, ligand_file, format, out_dir):
                       f'{ligand_file}.pdbqt', 
                       os.path.join(out_dir, f'{receptor_name}_{ligand_name}.pdbqt'),
                       os.path.join(out_dir, f'{receptor_name}_{ligand_name}.txt'))
+    file_name = os.path.join(out_dir, f'{receptor_name}_{ligand_name}.txt')
+    while not os.path.exists(file_name):  # 判断文件是否存在
+        time.sleep(0.5)
+    print('vina finish!')
+
+    generate_html(outdir=out_dir,
+                  html_name=f'{receptor_name}_{ligand_name}.html',
+                  job_id=job_id,
+                  protein_tertiary_structure_file=os.path.join(receptor, 'ranked_0.pdb'),
+                  protein_tertiary_structure_PDBQT_format_file=f'{receptor_name}.pdbqt',
+                  compound_PDBQT_format_file=f'{ligand_name}.pdbqt',
+                  autodock_vina_molecular_docking_result=f'{receptor_name}_{ligand_name}.pdbqt',
+                  autodock_vina_molecular_docking_scoring_value=f'{receptor_name}_{ligand_name}.txt'
+                  )
+
+
+def generate_html(outdir,
+                  html_name,
+                  job_id=0,
+                  protein_tertiary_structure_file='Y265H/ranked_0.pdb',
+                  protein_tertiary_structure_PDBQT_format_file='Y265H.pdbqt',
+                  compound_PDBQT_format_file='1.pdbqt',
+                  autodock_vina_molecular_docking_result='Y265H_1.pdbqt',
+                  autodock_vina_molecular_docking_scoring_value='Y265H_1.txt'
+                  ):
+    html_name = os.path.join(outdir, html_name)
+    f = open(html_name, 'w')
+
+    message = """
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <title>REPORT</title>
+    </head>
+    <body>
+        <h2 align="left">JOB id: %d</h2>
+        <h2></h2>
+        <h2 align="left">Input file</h2>
+        <p align="left">You can find your input fasta file here.</p>
+        <h3></h3>
+        <h2 align="left">Result files</h2>
+
+        <h3 align="left">Protein tertiary structure file</h3>
+        <p align="left">Click <a href="%s">here</a> to download the Protein tertiary structure file</p>
+        <h3 align="left">Protein tertiary structure PDBQT format file</h3>
+        <p align="left">Click <a href="%s">here</a> to download the Protein tertiary structure PDBQT format file.</p>
+        <h3 align="left">Compound PDBQT format file</h3>
+        <p align="left">Click <a href="%s">here</a> to download the PPDBQT format file.</p>
+        <h3 align="left">Autodock vina molecular docking result</h3>
+        <p align="left">Click <a href="%s">here</a> to download the Autodock vina molecular docking result file.</p>
+        <h3 align="left">Autodock Vina molecular docking scoring value</h3>
+        <p align="left">Click <a href="%s">here</a> to download the Autodock Vina molecular docking scoring value file.</p>
+
+    </body>
+    </html>
+    """ % (job_id,
+           protein_tertiary_structure_file,
+           protein_tertiary_structure_PDBQT_format_file,
+           compound_PDBQT_format_file,
+           autodock_vina_molecular_docking_result,
+           autodock_vina_molecular_docking_scoring_value)
+
+    f.write(message)
+    f.close()
 
 
 if __name__ == '__main__':
@@ -274,74 +342,12 @@ if __name__ == '__main__':
     args = parser.parse_args()
     alphafold_openbabel_vina(args.receptor, args.ligand, args.formate, args.outdir)
 
-
-file_name = os.path.join('outdir'.txt)  # fe.g. /tmp/alphafold/Y265H_1.txt
-while not os.path.exists(file_name):  # 判断文件是否存在
-    time.sleep(0.5)
-print('alphaflod_openbabel_vina finish!')
-f = open(file_name, 'r')
-# 读取每一行数据
-lines = f.readlines()
-new_lines = lines[:-1]
-f_w = open(os.path.join('outdir'.pdbqt'), "w")
-for line in new_lines:
-    f_w.write(line)
-f.close()
-f_w.close()
-
-
-# 命名生成的html
-GEN_HTML = "test.html"
-
-# 打开文件，准备写入
-f = open(GEN_HTML, 'w')
-
-# 准备相关变量
-str1 = 'my name is :'
-str2 = '--MichaelAn--'
-
-# 写入HTML界面中
-message = """
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>REPORT</title>
-</head>
-<body>
-    <h2 align="center">JOB id: </h2>
-    <h2 align="center">Input file</h2>
-    <p align="left">You can find your input fasta file here.</p>
-    <h2 align="center">Result files</h2>
-
-    <h3 align="center">Protein tertiary structure file</h3>
-    <p align="left">Click here to download the Protein tertiary structure file.</p>
-    <h3 align="center">Protein tertiary structure PDBQT format file</h3>
-    <p align="left">Click here to download the Protein tertiary structure file.</p>
-    <h3 align="center">Compound PDBQT format file</h3>
-    <p align="left">Click here to download the Protein tertiary structure file.</p>
-    <h3 align="center">Autodock vina molecular docking result</h3>
-    <p align="left">Click here to download the Protein tertiary structure file.</p>
-    <h3 align="center">Autodock Vina molecular docking scoring value</h3>
-    <p align="left">Click here to download the Protein tertiary structure file.</p>
-
-</body>
-</html>
-""" % (str1, str2)
-
-# 写入文件
-f.write(message)
-
-# 关闭文件
-f.close()
-
-# 运行完自动在网页中显示
-webbrowser.open(GEN_HTML, new=1)
-'''
-webbrowser.open(url, new=0, autoraise=True) 
-Display url using the default browser. 
-If new is 0, the url is opened in the same browser window if possible.
-If new is 1, a new browser window is opened if possible.
-If new is 2, a new browser page (“tab”) is opened if possible.
-If auto raise is True, the window is raised if possible (note that under many window managers this will occur regardless of the setting of this variable).
-'''
+    generate_html('D:\Desktop\\alphafold_openbabel_vina\生成数据',
+                  'Y265H_1.html',
+                  job_id=0,
+                  protein_tertiary_structure_file='Y265H.pdbqt',
+                  protein_tertiary_structure_PDBQT_format_file='Y265H.pdbqt',
+                  compound_PDBQT_format_file='1.pdbqt',
+                  autodock_vina_molecular_docking_result='Y265H_1.pdbqt',
+                  autodock_vina_molecular_docking_scoring_value='Y265H_1.txt'
+                  )
