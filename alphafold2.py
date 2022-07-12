@@ -189,6 +189,39 @@ def docker_service(fasta_paths,
     for line in container.logs(stream=True):
         logging.info(line.strip().decode('utf-8'))
 
+def generate_html(outdir,
+                  html_name,
+                  job_id=0,
+                  protein_tertiary_structure_file='Y265H/ranked_0.pdb',
+                  ):
+    html_name = os.path.join(outdir, html_name)
+    f = open(html_name, 'w')
+
+    message = """
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <title>REPORT</title>
+    </head>
+    <body>
+        <h2 align="left">JOB id: %d</h2>
+        <h2></h2>
+        <h2 align="left">Input file</h2>
+        <p align="left">You can find your input fasta file here.</p>
+        <h3></h3>
+        <h2 align="left">Result files</h2>
+
+        <h3 align="left">Protein tertiary structure file</h3>
+        <p align="left">Click <a href="%s">here</a> to download the Protein tertiary structure file</p>
+    </body>
+    </html>
+    """ % (job_id,
+           protein_tertiary_structure_file)
+
+    f.write(message)
+    f.close()
+
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser()
@@ -196,3 +229,10 @@ if __name__ == '__main__':
     parser.add_argument('output_dir', type=str, help='the output_dir file, absolute path without file extension, e.g. /tmp/alphafold')
     args = parser.parse_args()
     docker_service(fasta_paths=[args.fasta_paths], output_dir=args.output_dir)
+    _, receptor_name = os.path.split(args.fasta_paths)
+    file_name = os.path.join(args.output_dir, receptor_name, 'ranked_0.pdb')  # f'/tmp/alphafold/{receptor}/ranked_0.pdb'
+    while not os.path.exists(file_name):  # 判断文件是否存在
+        time.sleep(0.5)
+    print('alphaflod finish!')
+    generate_html(outdir=args.output_dir,
+                  html_name=f'{receptor_name}_alphafold.html')
